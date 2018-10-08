@@ -152,6 +152,9 @@ for boost in boosts_data['data']:
           header_printed = True
       csvwriter.writerow([utm_source] + list(widget_stat.values()))
 
+# Close file
+widget_file.close()
+
 # Send email via sendgrid
 sg = sendgrid.SendGridAPIClient(apikey=os.environ.get('SENDGRID_API_KEY'))
 from_email = Email(os.environ.get('SENDGRID_SEND_FROM_EMAIL'))
@@ -160,8 +163,11 @@ to_email = Email("SENDGRID_SEND_TO_EMAIL")
 content = Content("text/plain", "Hello, Email!")
 
 # Generate attachment
-data = widget_file.read()
-widget_file.close()
+file_path = widget_filename
+with open(file_path,'rb') as f:
+    data = f.read()
+    f.close()
+
 encoded = base64.b64encode(data).decode()
 attachment = Attachment()
 attachment.content = encoded
