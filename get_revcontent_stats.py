@@ -1,7 +1,11 @@
+import base64
 import csv
 import datetime
 import os
+
 import requests
+import sendgrid
+from sendgrid.helpers.mail import Content, Email, Mail, Attachment
 
 REVCONTENT_API = 'https://api.revcontent.io'
 
@@ -124,13 +128,14 @@ rev.login()
 # Get all the boosts (aka utm_sources)
 boosts_data = rev.get_boosts()
 today = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-widget_file = open('widget_stats_yesterday_{}.csv'.format(today), 'w')
+widget_filename = 'widget_stats_yesterday_{}.csv'.format(today)
+widget_file = open(widget_filename, 'w')
 csvwriter = csv.writer(widget_file)
 
 yesterday = datetime.date.today() - datetime.timedelta(1)
 yesterday_string = yesterday.strftime('%Y-%m-%d')
 
-
+# Generate CSV
 header_printed = False
 for boost in boosts_data['data']:
     utm_source = boost['utm_codes'].split('&')[0].split('=')[-1]
@@ -147,3 +152,28 @@ for boost in boosts_data['data']:
           header_printed = True
       csvwriter.writerow([utm_source] + list(widget_stat.values()))
 
+# Send email via sendgrid
+sg = sendgrid.SendGridAPIClient(apikey=os.environ.get('SENDGRID_API_KEY'))
+from_email = Email(os.environ.get('SENDGRID_SEND_FROM_EMAIL'))
+subject = "Revcontent - Daily Stats"
+to_email = Email("SENDGRID_SEND_TO_EMAIL")
+content = Content("text/plain", "Hello, Email!")
+
+# Generate attachment
+data = widget_file.read()
+widget_file.close()
+encoded = base64.b64encode(data).decode()
+attachment = Attachment()
+attachment.content = encoded
+attachment.type = "text/csv"
+attachment.filename = widget_filename
+attachment.disposition = "attachment"
+attachment.content_id = widget_filename
+
+mail = Mail(from_email, subject, to_email, content)
+mail.add_attachment(attachment)
+
+response = sg.client.mail.send.post(request_body=mail.get())
+print(response.status_code)
+print(response.body)
+print(response.headers)
