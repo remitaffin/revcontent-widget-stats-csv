@@ -1,0 +1,13 @@
+# Mac-specific files
+.DS_Store
+
+# Python Temporary Files
+__pycache__
+.pyc
+.pyo
+
+# Virtualenv-specific files
+virtualenv
+
+# Generated csv files
+widget_stats_yesterday_*.csv
