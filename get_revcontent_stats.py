@@ -157,10 +157,11 @@ widget_file.close()
 
 # Send email via sendgrid
 sg = sendgrid.SendGridAPIClient(apikey=os.environ.get('SENDGRID_API_KEY'))
-from_email = Email(os.environ.get('SENDGRID_SEND_FROM_EMAIL'))
+from_email = Email(os.environ.get('SENDGRID_SEND_FROM_EMAIL'),
+                   os.environ.get('SENDGRID_SEND_FROM_NAME'))
 subject = "Revcontent - Daily Stats"
-to_email = Email("SENDGRID_SEND_TO_EMAIL")
-content = Content("text/plain", "Hello, Email!")
+to_email = Email(os.environ.get("SENDGRID_SEND_TO_EMAIL"))
+content = Content("text/plain", "Here is the daily revcontent widget stats")
 
 # Generate attachment
 file_path = widget_filename
