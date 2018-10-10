@@ -164,8 +164,7 @@ to_email = Email(os.environ.get("SENDGRID_SEND_TO_EMAIL"))
 content = Content("text/plain", "Here is the daily revcontent widget stats")
 
 # Generate attachment
-file_path = widget_filename
-with open(file_path,'rb') as f:
+with open(widget_filename, 'rb') as f:
     data = f.read()
     f.close()
 
