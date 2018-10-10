@@ -110,7 +110,7 @@ class Revcontent(object):
 
     def get_widgets_stats(self, boost_id, date_from=None):
         """ GET https://api.revcontent.io/stats/api/v1.0/boosts/:boost_id/widgets/stats """
-        if date_from is None and date_to is None:
+        if date_from is None:
             url = (REVCONTENT_API, '/stats/api/v1.0/boosts/', boost_id,
                    '/widgets/stats?limit=1000&min_spend=1')
         else:
