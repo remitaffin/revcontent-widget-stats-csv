@@ -2,12 +2,14 @@ import base64
 import csv
 import datetime
 import os
+import time
 
 import requests
 import sendgrid
 from sendgrid.helpers.mail import Content, Email, Mail, Attachment
 
 REVCONTENT_API = 'https://api.revcontent.io'
+RETRY = 5
 
 
 
@@ -31,7 +33,7 @@ class Revcontent(object):
             'Cache-Control': 'no-cache',
         }
 
-    def fetch(self, method, url, **kwargs):
+    def fetch(self, method, url, retry=True, **kwargs):
         """
         TODO: Handle expired access token, re-login on expire
         """
@@ -41,7 +43,20 @@ class Revcontent(object):
         if method.strip().upper() not in HTTP_METHODS:
             raise ValueError('Invalid Http Method: {}'.format(method))
 
-        return requests.request(method, url, **kwargs)
+        for attempt in range(RETRY):
+            response = requests.request(method, url, **kwargs)
+            if not retry:
+                break
+
+            if response.json().get('data') is not None:
+                break
+            else:
+                # Print response and wait 5 seconds
+                print("Missing data for response['data']")
+                print(response.json())
+                time.sleep(5)
+
+        return response
 
     def login(self):
         """ POST https://api.revcontent.io/oauth/token """
@@ -54,7 +69,7 @@ class Revcontent(object):
                 'grant_type': self.grant_type,
             }
             resp = self.fetch('POST', REVCONTENT_API + '/oauth/token',
-                              data=payload)
+                              retry=False, data=payload)
             if resp.status_code == 200:
                 data = resp.json()
                 self.token = data['access_token']
