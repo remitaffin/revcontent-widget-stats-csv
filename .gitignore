@@ -10,5 +10,4 @@ __pycache__
 virtualenv
 
 # Generated csv files
-widget_stats_yesterday_*.csv
-widget_stats_mtd_*.csv
+widget_stats_*.csv

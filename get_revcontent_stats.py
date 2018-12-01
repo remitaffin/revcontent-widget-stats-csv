@@ -1,7 +1,9 @@
+import argparse
 import base64
 import csv
 import datetime
 import os
+import sys
 import time
 
 import requests
@@ -11,6 +13,27 @@ from sendgrid.helpers.mail import Content, Email, Mail, Attachment
 REVCONTENT_API = 'https://api.revcontent.io'
 RETRY = 5
 
+def is_valid_date(value):
+    from datetime import datetime
+    try:
+        datetime.strptime(value, '%Y-%m-%d')
+        return True
+    except ValueError as err:
+        return False
+
+
+parser = argparse.ArgumentParser(description='Get Widget stats from RevContent API')
+parser.add_argument('--date-from', dest='date_from', default=None,
+                    type=str, help='Date From (format YYYY-MM-DD)')
+parser.add_argument('--date-to', dest='date_to', default=None,
+                    type=str, help='Date To (format YYYY-MM-DD)')
+args = parser.parse_args()
+if args.date_to and not args.date_from:
+    parser.error('You cannot provide a date_to without a date_from')
+if args.date_from and not is_valid_date(args.date_from):
+    parser.error('date_from must use format YYYY-MM-DD and be a valid date')
+if args.date_to and not is_valid_date(args.date_to):
+    parser.error('date_to must use format YYYY-MM-DD and be a valid date')
 
 
 class RevcontentException(Exception):
@@ -123,15 +146,16 @@ class Revcontent(object):
                date_from, '&date_to=', date_to, '&aggregate=yes')
         return self.fetch('GET', ''.join(url), headers=self.headers)
 
-    def get_widgets_stats(self, boost_id, date_from=None):
+    def get_widgets_stats(self, boost_id, date_from=None, date_to=None):
         """ GET https://api.revcontent.io/stats/api/v1.0/boosts/:boost_id/widgets/stats """
-        if date_from is None:
-            url = (REVCONTENT_API, '/stats/api/v1.0/boosts/', boost_id,
-                   '/widgets/stats?limit=1000&min_spend=1')
-        else:
+        if date_to is None:
             url = (REVCONTENT_API, '/stats/api/v1.0/boosts/', boost_id,
                    '/widgets/stats?limit=1000&min_spend=1&date_from=',
                    date_from)
+        else:
+            url = (REVCONTENT_API, '/stats/api/v1.0/boosts/', boost_id,
+                   '/widgets/stats?limit=1000&min_spend=1&date_from=',
+                   date_from, '&date_to=', date_to)
         return self.fetch('GET', ''.join(url), headers=self.headers).json()
 
 
@@ -143,23 +167,34 @@ rev.login()
 # Get all the boosts (aka utm_sources)
 boosts_data = rev.get_boosts()
 today = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-widget_filename = 'widget_stats_yesterday_{}.csv'.format(today)
+if args.date_from is None and args.date_to is None:
+    # If no arguments are provided, default to yesterday's stats
+    widget_filename = 'widget_stats_yesterday_{}.csv'.format(today)
+elif args.date_from is not None and args.date_to is None:
+    # If we have a date_from but not date_to
+    widget_filename = 'widget_stats_{}_to_today.csv'.format(args.date_from)
+else:
+    # If we have both a data_from and a date_to
+    widget_filename = 'widget_stats_{}_{}.csv'.format(args.date_from, args.date_to)
 widget_file = open(widget_filename, 'w')
 csvwriter = csv.writer(widget_file)
 
+# Define time limits for the report (date_from and date_to)
 yesterday = datetime.date.today() - datetime.timedelta(1)
-yesterday_string = yesterday.strftime('%Y-%m-%d')
+if not args.date_from:
+    date_from = yesterday.strftime('%Y-%m-%d')
+else:
+    date_from = args.date_from
+date_to = args.date_to
 
 # Generate CSV
 header_printed = False
 for boost in boosts_data['data']:
     utm_source = boost['utm_codes'].split('&')[0].split('=')[-1]
     print(utm_source)
-    # For MTD
-    # widget_stats = rev.get_widgets_stats(boost['id'])
-    # For yesterday
     widget_stats = rev.get_widgets_stats(boost['id'],
-                                         date_from=yesterday_string)
+                                         date_from=date_from,
+                                         date_to=date_to)
 
     for widget_stat in widget_stats['data']:
       if not header_printed:
