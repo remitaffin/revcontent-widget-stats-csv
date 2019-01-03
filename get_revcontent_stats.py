@@ -191,16 +191,17 @@ date_to = args.date_to
 header_printed = False
 for boost in boosts_data['data']:
     utm_source = boost['utm_codes'].split('&')[0].split('=')[-1]
-    print(utm_source)
+    campaign_name = boost['name']
+    print(campaign_name)
     widget_stats = rev.get_widgets_stats(boost['id'],
                                          date_from=date_from,
                                          date_to=date_to)
 
     for widget_stat in widget_stats['data']:
       if not header_printed:
-          csvwriter.writerow(['utm_source'] + list(widget_stat.keys()))
+          csvwriter.writerow(['campaign_name', 'utm_source'] + list(widget_stat.keys()))
           header_printed = True
-      csvwriter.writerow([utm_source] + list(widget_stat.values()))
+      csvwriter.writerow([campaign_name, utm_source] + list(widget_stat.values()))
 
 # Close file
 widget_file.close()
