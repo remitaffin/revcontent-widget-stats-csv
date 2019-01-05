@@ -192,7 +192,7 @@ header_printed = False
 for boost in boosts_data['data']:
     utm_source = boost['utm_codes'].split('&')[0].split('=')[-1]
     campaign_name = boost['name']
-    print(campaign_name)
+    print(utm_source)
     widget_stats = rev.get_widgets_stats(boost['id'],
                                          date_from=date_from,
                                          date_to=date_to)
