@@ -27,6 +27,8 @@ parser.add_argument('--date-from', dest='date_from', default=None,
                     type=str, help='Date From (format YYYY-MM-DD)')
 parser.add_argument('--date-to', dest='date_to', default=None,
                     type=str, help='Date To (format YYYY-MM-DD)')
+parser.add_argument('--tag', dest='tag', default=None,
+                    type=str, help='New column to add formatted as tagname:value')
 args = parser.parse_args()
 if args.date_to and not args.date_from:
     parser.error('You cannot provide a date_to without a date_from')
@@ -34,6 +36,9 @@ if args.date_from and not is_valid_date(args.date_from):
     parser.error('date_from must use format YYYY-MM-DD and be a valid date')
 if args.date_to and not is_valid_date(args.date_to):
     parser.error('date_to must use format YYYY-MM-DD and be a valid date')
+
+if args.tag and len(args.tag.split(':')) != 2 and all(args.tag.split(':')):
+  parser.error('tag must use format tagname:value (for example month:january or q:q1)')
 
 
 class RevcontentException(Exception):
@@ -186,11 +191,16 @@ if not args.date_from:
 else:
     date_from = args.date_from
 date_to = args.date_to
+[tag_name, tag_value] = args.tag.split(':') if args.tag else [None, None]
 
 # Generate CSV
 header_printed = False
+boost_data_keys = None
 for boost in boosts_data['data']:
-    utm_source = boost['utm_codes'].split('&')[0].split('=')[-1]
+    if boost['utm_codes']:
+      utm_source = boost['utm_codes'].split('&')[0].split('=')[-1]
+    else:
+      utm_source = ''
     campaign_name = boost['name']
     print(utm_source)
     widget_stats = rev.get_widgets_stats(boost['id'],
@@ -198,10 +208,19 @@ for boost in boosts_data['data']:
                                          date_to=date_to)
 
     for widget_stat in widget_stats['data']:
+      if not boost_data_keys:
+        boost_data_keys = list(sorted(widget_stat.keys()))
+
       if not header_printed:
-          csvwriter.writerow(['campaign_name', 'utm_source'] + list(widget_stat.keys()))
+          extra_headers = ['campaign_name', 'utm_source']
+          if tag_name:
+            extra_headers = [tag_name] + extra_headers
+          csvwriter.writerow(extra_headers + boost_data_keys)
           header_printed = True
-      csvwriter.writerow([campaign_name, utm_source] + list(widget_stat.values()))
+      extra_fields = [campaign_name, utm_source]
+      if tag_name:
+        extra_fields = [tag_value] + extra_fields
+      csvwriter.writerow(extra_fields + [widget_stat[k] for k in boost_data_keys])
 
 # Close file
 widget_file.close()
